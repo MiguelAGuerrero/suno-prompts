@@ -1,0 +1,1195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0a0a0a">
+  <title>Suno Prompts</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --green:#1DB954; --blue:#4A9EFF; --orange:#FF8C42; --purple:#B06EFF; --gold:#FFD060; --teal:#00D2C8;
+      --bg:#0a0a0a; --card:rgba(255,255,255,0.04); --border:rgba(255,255,255,0.09); --muted:rgba(255,255,255,0.32);
+      --nav-h:64px; --safe-top:env(safe-area-inset-top,0px); --safe-bot:env(safe-area-inset-bottom,0px);
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html,body{min-height:100%;background:var(--bg);color:#fff;font-family:'DM Mono',monospace;-webkit-font-smoothing:antialiased;overscroll-behavior:none}
+    body{padding-top:var(--safe-top)}
+    input,textarea,select,button{font-size:16px;font-family:'DM Mono',monospace}
+    input::placeholder,textarea::placeholder{color:rgba(255,255,255,0.2)}
+    textarea{resize:vertical;-webkit-user-select:text;user-select:text}
+    button{cursor:pointer;border:none;background:none;color:inherit;-webkit-tap-highlight-color:transparent}
+    #app{max-width:520px;margin:0 auto}
+    .view{padding:0 16px;padding-bottom:calc(var(--nav-h) + var(--safe-bot) + 100px);display:none}
+    .view.active{display:block}
+
+    /* PAGE HEADER */
+    .page-header{padding:24px 0 16px;border-bottom:1px solid var(--border);margin-bottom:16px;display:flex;align-items:center;justify-content:space-between}
+    .page-header-left{flex:1;min-width:0}
+    .page-title{font-family:'Bebas Neue',sans-serif;font-size:36px;letter-spacing:0.06em;line-height:1}
+    .page-sub{font-size:10px;color:var(--muted);letter-spacing:0.1em;margin-top:4px}
+    .hamburger-btn{width:44px;height:44px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:5px;margin-top:4px;flex-shrink:0}
+    .hamburger-btn span{display:block;width:22px;height:2px;background:#fff;border-radius:2px}
+
+    /* TYPE PILLS (Songs / Styles) */
+    .type-filter{display:flex;gap:8px;margin-bottom:14px}
+    .type-pill{flex:1;padding:10px;border-radius:10px;font-size:11px;letter-spacing:0.12em;font-weight:700;border:1px solid rgba(255,255,255,0.1);color:var(--muted);text-align:center;transition:all 0.15s;min-height:40px}
+    .type-pill.active-song{background:rgba(29,185,84,0.12);border-color:rgba(29,185,84,0.3);color:var(--green)}
+    .type-pill.active-style{background:rgba(74,158,255,0.12);border-color:rgba(74,158,255,0.3);color:var(--blue)}
+    .type-pill.active-all{background:rgba(255,255,255,0.07);border-color:rgba(255,255,255,0.18);color:#fff}
+
+    /* SEARCH */
+    .search-wrap{margin-bottom:12px}
+    .search-input{width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:13px 16px;color:#fff;outline:none;-webkit-appearance:none}
+    .search-controls{display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap}
+    .search-mode-toggle{display:flex;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;overflow:hidden;flex-shrink:0}
+    .mode-btn{padding:7px 13px;font-size:10px;letter-spacing:0.12em;font-weight:700;color:var(--muted);min-height:34px;transition:all 0.15s}
+    .mode-btn.active{background:var(--green);color:#000}
+    .search-tokens{display:flex;flex-wrap:wrap;gap:5px;flex:1}
+    .search-token{font-size:10px;letter-spacing:0.08em;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:12px;padding:4px 10px;color:rgba(255,255,255,0.6)}
+    .search-token.hit{background:rgba(29,185,84,0.15);border-color:rgba(29,185,84,0.3);color:var(--green)}
+    .results-bar{font-size:10px;color:var(--muted);letter-spacing:0.08em;margin-bottom:10px}
+    .relevance-badge{font-size:9px;letter-spacing:0.1em;font-weight:700;background:rgba(29,185,84,0.15);color:var(--green);border-radius:10px;padding:2px 8px;white-space:nowrap}
+
+    /* CARDS */
+    .card{background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:10px}
+    .card.pinned{border-color:rgba(255,208,96,0.35);background:rgba(255,208,96,0.02)}
+    .card.is-song{border-left:3px solid rgba(29,185,84,0.4)}
+    .card.is-style{border-left:3px solid rgba(74,158,255,0.4)}
+    .card-header{padding:14px 16px;display:flex;align-items:center;gap:10px;min-height:62px}
+    .pin-btn{font-size:16px;padding:4px;flex-shrink:0;opacity:0.3;transition:opacity 0.15s}
+    .pin-btn.pinned{opacity:1}
+    .card-info{flex:1;min-width:0;cursor:pointer}
+    .card-title{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:0.05em;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .card-meta{display:flex;align-items:center;gap:6px;margin-top:3px;flex-wrap:wrap}
+    .card-sub{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
+    .type-badge{font-size:9px;letter-spacing:0.1em;border-radius:10px;padding:2px 7px;white-space:nowrap;flex-shrink:0}
+    .type-badge-song{background:rgba(29,185,84,0.12);color:var(--green)}
+    .type-badge-style{background:rgba(74,158,255,0.12);color:var(--blue)}
+    .folder-tag{font-size:9px;letter-spacing:0.1em;color:var(--muted);background:rgba(255,255,255,0.05);border-radius:10px;padding:2px 7px;white-space:nowrap;flex-shrink:0}
+    .card-chevron{color:rgba(255,255,255,0.22);font-size:18px;transition:transform 0.22s;flex-shrink:0;cursor:pointer;padding:4px}
+    .card-chevron.open{transform:rotate(180deg)}
+    .card-body{padding:0 18px 18px}
+    .card-divider{height:1px;background:var(--border);margin-bottom:16px}
+    .field-block{margin-bottom:14px}
+    .field-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+    .field-label{font-size:10px;letter-spacing:0.15em;color:var(--green);font-weight:700}
+    .field-label-blue{color:var(--blue)}
+    .field-content{background:rgba(0,0,0,0.3);border-radius:10px;padding:11px 13px;font-size:12px;color:rgba(255,255,255,0.75);line-height:1.7;white-space:pre-wrap;word-break:break-word}
+    .field-content.muted{color:var(--muted)}
+    .field-content.lyrics{max-height:220px;overflow-y:auto;line-height:1.9}
+    .field-content.notes-content{background:rgba(255,208,96,0.04);border:1px solid rgba(255,208,96,0.1);color:rgba(255,208,96,0.8)}
+    .copy-btn{background:rgba(255,255,255,0.07);color:#fff;border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:8px 13px;font-size:10px;letter-spacing:0.1em;font-weight:700;min-height:38px;white-space:nowrap;transition:background 0.18s,color 0.18s}
+    .copy-btn:disabled{opacity:0.28}
+    .copy-btn.copied{background:var(--green);color:#000;border-color:var(--green)}
+
+    /* SECTIONS IN CARD */
+    .sections-header{font-size:10px;letter-spacing:0.15em;color:var(--teal);font-weight:700;margin-bottom:10px;margin-top:4px}
+    .section-row{background:rgba(0,212,200,0.04);border:1px solid rgba(0,212,200,0.12);border-radius:12px;padding:12px 14px;margin-bottom:8px}
+    .section-label-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+    .section-badge{font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:0.06em;background:rgba(0,212,200,0.15);color:var(--teal);border-radius:8px;padding:3px 10px;white-space:nowrap}
+    .section-preview{font-size:11px;color:rgba(255,255,255,0.45);line-height:1.6;margin-bottom:10px;white-space:pre-wrap;max-height:60px;overflow:hidden}
+    .section-style-row{display:flex;align-items:center;gap:8px}
+    .section-style-input{flex:1;background:rgba(0,0,0,0.35);border:1px solid rgba(0,212,200,0.2);border-radius:8px;padding:8px 11px;color:rgba(0,212,200,0.9);font-size:11px;outline:none;-webkit-appearance:none;placeholder:color:rgba(0,212,200,0.3)}
+    .section-style-input::placeholder{color:rgba(0,212,200,0.25)}
+    .section-save-btn{font-size:10px;letter-spacing:0.08em;font-weight:700;color:var(--teal);border:1px solid rgba(0,212,200,0.25);border-radius:7px;padding:7px 11px;white-space:nowrap;min-height:34px;transition:all 0.15s}
+    .section-save-btn.saved{background:rgba(0,212,200,0.15);color:var(--teal)}
+
+    /* VERSIONS */
+    .versions-toggle{width:100%;margin-top:10px;background:rgba(176,110,255,0.07);border:1px solid rgba(176,110,255,0.18);border-radius:9px;padding:10px 14px;color:var(--purple);font-size:11px;letter-spacing:0.12em;font-weight:700;display:flex;justify-content:space-between;align-items:center}
+    .version-list{margin-top:8px;display:flex;flex-direction:column;gap:6px}
+    .version-item{background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:10px 13px;display:flex;align-items:center;gap:10px}
+    .version-info{flex:1;min-width:0}
+    .version-date{font-size:10px;color:var(--muted);margin-bottom:2px}
+    .version-preview{font-size:11px;color:rgba(255,255,255,0.5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .version-restore{font-size:10px;letter-spacing:0.1em;font-weight:700;color:var(--purple);border:1px solid rgba(176,110,255,0.25);border-radius:6px;padding:6px 10px;white-space:nowrap;min-height:34px}
+
+    .card-actions{display:flex;gap:9px;margin-top:12px}
+    .act-btn{flex:1;background:rgba(255,255,255,0.07);color:#fff;border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:13px;font-size:12px;letter-spacing:0.1em;font-weight:700;min-height:48px}
+    .act-btn.trash{flex:0;padding:13px 18px;background:transparent;color:rgba(255,100,100,0.5);border-color:rgba(255,60,60,0.1);font-size:17px}
+    .act-btn.del-confirm{flex:0;padding:13px 14px;font-size:11px;background:rgba(255,50,50,0.18);color:#ff6b6b;border-color:rgba(255,50,50,0.22)}
+    .act-btn.del-cancel{flex:0;padding:13px 12px;font-size:11px;background:transparent;color:var(--muted);border-color:rgba(255,255,255,0.08)}
+
+    .empty-state{text-align:center;padding:70px 20px}
+    .empty-icon{font-size:42px;margin-bottom:14px}
+    .empty-title{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:0.06em;color:rgba(255,255,255,0.25);margin-bottom:8px}
+    .empty-sub{font-size:11px;color:var(--muted)}
+
+    /* FAB */
+    #fab{position:fixed;bottom:calc(var(--nav-h) + var(--safe-bot) + 14px);left:50%;transform:translateX(-50%);background:var(--green);color:#000;border-radius:50px;padding:14px 28px;font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:0.08em;box-shadow:0 8px 28px rgba(29,185,84,0.36);display:flex;align-items:center;gap:7px;z-index:40;white-space:nowrap}
+
+    /* NAV */
+    #bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:520px;height:calc(var(--nav-h) + var(--safe-bot));background:#0f0f0f;border-top:1px solid var(--border);display:flex;align-items:flex-start;padding-top:10px;z-index:50}
+    .nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 0;color:var(--muted);transition:color 0.15s}
+    .nav-btn.active{color:var(--green)}
+    .nav-icon{font-size:20px;line-height:1}
+    .nav-label{font-size:9px;letter-spacing:0.12em;font-weight:700}
+
+    /* FOLDER DRAWER */
+    #drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:200;display:none}
+    #drawer-overlay.open{display:block}
+    #drawer{position:fixed;top:0;left:0;bottom:0;width:280px;background:#111;border-right:1px solid rgba(255,255,255,0.1);z-index:201;transform:translateX(-100%);transition:transform 0.26s ease;padding-top:var(--safe-top);display:flex;flex-direction:column}
+    #drawer.open{transform:translateX(0)}
+    .drawer-header{display:none}
+    .drawer-list{flex:1;overflow-y:auto;padding:8px 0}
+    .drawer-footer{padding:12px 12px calc(12px + var(--safe-bot));border-top:1px solid var(--border);flex-shrink:0}
+    .drawer-item{display:flex;align-items:center;gap:12px;padding:14px 20px;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background 0.15s}
+    .drawer-item.active-folder{background:rgba(29,185,84,0.1)}
+    .drawer-item-icon{font-size:16px;flex-shrink:0}
+    .drawer-item-label{flex:1;font-size:13px;letter-spacing:0.05em;word-break:break-word}
+    .drawer-item.active-folder .drawer-item-label{color:var(--green);font-weight:700}
+    .drawer-item-count{font-size:10px;color:var(--muted);background:rgba(255,255,255,0.07);border-radius:10px;padding:3px 8px;flex-shrink:0}
+    .drawer-export-row{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--border)}
+    .add-folder-btn{width:100%;background:var(--green);border:none;border-radius:8px;padding:10px 14px;font-size:11px;font-weight:700;letter-spacing:0.08em;color:#000;text-align:left;cursor:pointer;transition:opacity 0.15s}
+    .add-folder-btn:hover{opacity:0.85}
+    .folder-rename-input{width:100%;background:rgba(255,255,255,0.07);border:1px solid var(--green);border-radius:8px;padding:10px 12px;color:#fff;outline:none;-webkit-appearance:none;font-size:12px;font-weight:700;letter-spacing:0.05em}
+
+    /* MODAL */
+    #modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:100;display:none;align-items:flex-end;justify-content:center}
+    #modal-overlay.open{display:flex}
+    #modal-sheet{background:#141414;border-radius:24px 24px 0 0;border:1px solid rgba(255,255,255,0.09);border-bottom:none;width:100%;max-width:520px;max-height:92vh;overflow-y:auto;padding:10px 20px 0}
+    .modal-handle{width:38px;height:4px;background:rgba(255,255,255,0.13);border-radius:2px;margin:0 auto 18px}
+    .modal-title{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:0.06em;margin-bottom:20px}
+    .modal-field{margin-bottom:17px}
+    .modal-label{display:block;font-size:10px;letter-spacing:0.15em;font-weight:700;margin-bottom:8px}
+    .modal-label-green{color:var(--green)}
+    .modal-label-blue{color:var(--blue)}
+    .modal-label-gold{color:var(--gold)}
+    .modal-input{width:100%;background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.11);border-radius:10px;padding:13px 14px;color:#fff;outline:none;-webkit-appearance:none;line-height:1.5}
+    .modal-textarea{width:100%;background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.11);border-radius:10px;padding:13px 14px;color:#fff;outline:none;-webkit-appearance:none;line-height:1.7;resize:vertical}
+    .modal-textarea.notes-ta{background:rgba(255,208,96,0.04);border-color:rgba(255,208,96,0.15)}
+    .char-counter-row{display:flex;justify-content:flex-end;margin-top:5px}
+    .char-counter{font-size:10px;color:var(--muted);transition:color 0.2s}
+    .char-counter.warn{color:var(--orange)}
+    .char-counter.over{color:#ff5555;font-weight:700}
+    .folder-select{width:100%;background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.11);border-radius:10px;padding:13px 14px;color:#fff;outline:none;-webkit-appearance:none}
+    .folder-select option{background:#1a1a1a;color:#fff}
+    .tag-toggle{width:100%;margin-top:9px;background:rgba(29,185,84,0.07);border:1px solid rgba(29,185,84,0.18);border-radius:9px;padding:10px 14px;color:var(--green);font-size:11px;letter-spacing:0.12em;font-weight:700;display:flex;justify-content:space-between;align-items:center}
+    .tag-picker-panel{margin-top:10px;background:rgba(0,0,0,0.25);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:14px}
+    .group-row{margin-bottom:6px;border:1px solid rgba(255,255,255,0.07);border-radius:10px;overflow:hidden}
+    .group-header{display:flex;justify-content:space-between;align-items:center;padding:10px 13px;cursor:pointer;background:rgba(255,255,255,0.03)}
+    .group-header-left{display:flex;align-items:center;gap:8px}
+    .group-icon{font-size:14px}
+    .group-name{font-size:10px;letter-spacing:0.14em;font-weight:700;color:rgba(255,255,255,0.65)}
+    .group-count{font-size:9px;color:var(--green);letter-spacing:0.08em}
+    .group-arrow{font-size:13px;color:rgba(255,255,255,0.2);transition:transform 0.2s}
+    .group-arrow.open{transform:rotate(180deg)}
+    .group-body{padding:10px 13px 12px;display:none}
+    .group-body.open{display:block}
+    .tag-cloud{display:flex;flex-wrap:wrap;gap:7px}
+    .tag-chip{background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.11);border-radius:20px;padding:7px 12px;font-size:11px;color:rgba(255,255,255,0.68);transition:all 0.15s;min-height:34px;display:flex;align-items:center}
+    .tag-chip.active{background:var(--green);border-color:var(--green);color:#000;font-weight:700}
+    .custom-row{display:flex;gap:8px;margin-top:12px}
+    .custom-input{flex:1;background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.11);border-radius:8px;padding:10px 12px;color:#fff;outline:none;-webkit-appearance:none}
+    .custom-add{background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:10px 16px;color:#fff;font-size:12px;letter-spacing:0.08em;font-weight:700;min-height:44px;white-space:nowrap}
+    .modal-footer{display:flex;gap:12px;position:sticky;bottom:0;background:#141414;padding:12px 0 calc(20px + var(--safe-bot));border-top:1px solid rgba(255,255,255,0.06);margin-top:8px}
+    .modal-cancel{flex:1;background:transparent;color:var(--muted);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:15px;font-size:12px;letter-spacing:0.1em;min-height:52px}
+    .modal-save{flex:2;background:var(--green);color:#000;border:none;border-radius:12px;padding:15px;font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:0.08em;min-height:52px}
+
+    /* BSAVE removed */
+
+    /* MIX & MATCH — COMBINER */
+    .mm-step-bar{display:flex;align-items:center;gap:0;margin-bottom:20px}
+    .mm-step-dot{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:13px;border:2px solid rgba(255,255,255,0.15);color:var(--muted);flex-shrink:0;transition:all 0.2s}
+    .mm-step-dot.active{border-color:var(--green);color:var(--green)}
+    .mm-step-dot.done{background:var(--green);border-color:var(--green);color:#000}
+    .mm-step-line{flex:1;height:2px;background:rgba(255,255,255,0.1);margin:0 5px;transition:background 0.2s}
+    .mm-step-line.done{background:var(--green)}
+    .mm-step-label{font-size:10px;color:var(--muted);letter-spacing:0.1em;margin-bottom:14px;font-weight:700}
+    /* Step 1 — pick prompts */
+    /* MM OVERVIEW */
+    .mm-overview{background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:8px;min-height:48px;display:flex;flex-direction:column;gap:6px}
+    .mm-overview-empty{font-size:10px;letter-spacing:0.12em;color:var(--muted);align-self:center;padding:4px 0}
+    .mm-overview-section{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+    .mm-overview-label{font-size:9px;letter-spacing:0.12em;font-weight:700;flex-shrink:0}
+    .mm-overview-chip{font-size:10px;font-weight:700;letter-spacing:0.06em;border-radius:6px;padding:3px 9px;display:inline-flex;align-items:center;gap:5px;cursor:pointer}
+    .mm-chip-style{background:rgba(74,158,255,0.12);border:1px solid rgba(74,158,255,0.3);color:var(--blue)}
+    .mm-chip-lyric{background:rgba(29,185,84,0.1);border:1px solid rgba(29,185,84,0.25);color:var(--green)}
+    .mm-chip-x{opacity:0.5;font-size:11px}
+    /* MM PICK CARDS */
+    .mm-card{background:var(--card);border:1px solid var(--border);border-radius:14px;margin-bottom:8px;overflow:hidden;transition:border-color 0.15s}
+    .mm-card.mm-card-style-on{border-color:rgba(74,158,255,0.45)}
+    .mm-card.mm-card-lyric-on{border-color:rgba(29,185,84,0.45)}
+    .mm-card-row{display:flex;align-items:center;gap:10px;padding:12px 14px}
+    .mm-card-actions{display:flex;align-items:center;gap:6px;flex-shrink:0}
+    .mm-filter-pill.active-style{background:rgba(74,158,255,0.12);border-color:rgba(74,158,255,0.3);color:var(--blue)}
+    .mm-filter-pill.active-song{background:rgba(29,185,84,0.12);border-color:rgba(29,185,84,0.3);color:var(--green)}
+    .mm-card-name{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:0.05em;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .mm-card-sub{font-size:10px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .mm-sel-btn{width:26px;height:26px;border-radius:50%;border:2px solid rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;cursor:pointer;transition:all 0.15s;background:transparent}
+    .mm-sel-btn.style-on{background:var(--blue);border-color:var(--blue);color:#000}
+    .mm-sel-btn.lyric-on{background:var(--green);border-color:var(--green);color:#000}
+    .mm-chevron{font-size:11px;color:var(--muted);cursor:pointer;padding:4px;flex-shrink:0;transition:transform 0.2s;line-height:1}
+    .mm-chevron.open{transform:rotate(90deg)}
+    .mm-lyrics-preview{padding:0 14px 12px;font-size:11px;line-height:1.7;color:rgba(255,255,255,0.6);white-space:pre-wrap;border-top:1px solid var(--border);padding-top:10px;margin-top:0;max-height:200px;overflow-y:auto}
+    /* Step 2 — style blocks */
+    .mm-style-block{border:2px solid rgba(255,255,255,0.1);border-radius:12px;margin-bottom:10px;overflow:hidden;transition:border-color 0.15s}
+    .mm-style-block.on{border-color:rgba(74,158,255,0.4);background:rgba(74,158,255,0.04)}
+    .mm-style-block.off{opacity:0.45}
+    .mm-style-block-header{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer}
+    .mm-style-toggle{width:32px;height:20px;border-radius:10px;background:rgba(255,255,255,0.1);position:relative;flex-shrink:0;transition:background 0.15s}
+    .mm-style-toggle::after{content:'';position:absolute;width:14px;height:14px;border-radius:50%;background:#fff;top:3px;left:3px;transition:transform 0.15s}
+    .mm-style-block.on .mm-style-toggle{background:var(--blue)}
+    .mm-style-block.on .mm-style-toggle::after{transform:translateX(12px)}
+    .mm-style-source{font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:0.05em;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .mm-style-text{padding:0 14px 12px;font-size:11px;color:rgba(255,255,255,0.65);line-height:1.7;word-break:break-word}
+    /* mm-lyric CSS removed */
+    /* Step 3 — lyrics */
+    .mm-lyric-section{border:1px solid rgba(0,212,200,0.15);border-radius:12px;padding:13px 14px;margin-bottom:8px;cursor:pointer;transition:all 0.15s}
+    .mm-lyric-section.queued{border-color:var(--teal);background:rgba(0,212,200,0.05);opacity:0.5}
+    .mm-lyric-section-header{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+    .mm-lyric-badge{font-family:'Bebas Neue',sans-serif;font-size:12px;background:rgba(0,212,200,0.15);color:var(--teal);border-radius:6px;padding:2px 9px;white-space:nowrap}
+    .mm-lyric-source{font-size:10px;color:var(--muted)}
+    .mm-lyric-preview{font-size:11px;color:rgba(255,255,255,0.45);line-height:1.65;white-space:pre-wrap;max-height:56px;overflow:hidden}
+    .mm-queue{background:rgba(0,0,0,0.3);border:1px solid rgba(0,212,200,0.2);border-radius:12px;padding:12px 14px;margin-bottom:14px;min-height:52px}
+    .mm-queue-label{font-size:9px;letter-spacing:0.15em;color:var(--teal);font-weight:700;margin-bottom:8px}
+    .mm-queue-item{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05)}
+    .mm-queue-item:last-child{border-bottom:none}
+    .mm-queue-name{font-size:11px;color:rgba(255,255,255,0.7);flex:1}
+    .mm-queue-remove{font-size:12px;color:rgba(255,100,100,0.5);padding:4px 8px;min-height:28px}
+    .mm-queue-empty{font-size:11px;color:var(--muted);font-style:italic}
+    /* Step 4 — preview */
+    .mm-preview-block{border-radius:12px;padding:14px;margin-bottom:12px}
+    .mm-preview-style{background:rgba(74,158,255,0.06);border:1px solid rgba(74,158,255,0.2)}
+    .mm-preview-lyrics{background:rgba(29,185,84,0.04);border:1px solid rgba(29,185,84,0.15)}
+    .mm-preview-label{font-size:9px;letter-spacing:0.15em;font-weight:700;margin-bottom:8px}
+    .mm-preview-label-blue{color:var(--blue)}
+    .mm-preview-label-green{color:var(--green)}
+    .mm-preview-text{font-size:11px;line-height:1.7;color:rgba(255,255,255,0.75);word-break:break-word;white-space:pre-wrap;max-height:160px;overflow-y:auto}
+    .mm-preview-empty{color:var(--muted);font-style:italic}
+    /* Shared nav */
+    .mm-nav{display:flex;gap:10px;position:sticky;bottom:calc(var(--nav-h) + var(--safe-bot) + 14px);background:var(--bg);padding:12px 0 0;border-top:1px solid rgba(255,255,255,0.06);margin-top:8px;z-index:10}
+    .mm-btn-back{flex:1;background:transparent;color:var(--muted);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:15px;font-size:12px;letter-spacing:0.1em;min-height:52px}
+    .mm-btn-next{flex:2;background:var(--green);color:#000;border:none;border-radius:12px;padding:15px;font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:0.08em;min-height:52px;transition:background 0.15s}
+    .mm-btn-next:disabled{background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.25)}
+
+    /* BSAVE */
+
+
+    /* VIRTUAL STYLE CHIPS */
+    .vs-chips{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 6px}
+    .vs-chip{font-size:11px;font-weight:700;letter-spacing:0.05em;background:rgba(74,158,255,0.12);border:1px solid rgba(74,158,255,0.3);color:var(--blue);border-radius:20px;padding:4px 11px;white-space:nowrap}
+    .vs-chip.deleted{background:rgba(255,255,255,0.05);border-color:rgba(255,255,255,0.1);color:var(--muted);text-decoration:line-through}
+    .vs-resolve-toggle{font-size:9px;letter-spacing:0.12em;font-weight:700;color:var(--muted);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:3px 8px;min-height:24px;background:transparent;margin-left:4px}
+    .vs-resolved-preview{font-size:11px;color:rgba(255,255,255,0.5);line-height:1.7;margin-top:6px;padding:8px 10px;background:rgba(0,0,0,0.2);border-radius:8px;word-break:break-word}
+    .vs-lineage{margin-top:8px;padding:8px 10px;background:rgba(0,0,0,0.2);border-radius:8px;border-left:2px solid rgba(74,158,255,0.2)}
+    .vs-lineage-row{display:flex;align-items:flex-start;gap:6px;margin-bottom:4px;font-size:10px;color:rgba(255,255,255,0.4)}
+    .vs-lineage-row:last-child{margin-bottom:0}
+    .vs-lineage-indent{color:rgba(255,255,255,0.15);flex-shrink:0}
+    .vs-dep-badge{font-size:9px;letter-spacing:0.1em;color:var(--muted);background:rgba(255,255,255,0.05);border-radius:5px;padding:1px 6px;margin-left:6px;vertical-align:middle}
+    .alpha-header{padding:24px 0 0;font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:0.08em;color:rgba(255,255,255,0.9);line-height:1;display:block;margin-bottom:16px}
+    .alpha-header::after{content:'';display:block;height:2px;background:rgba(255,255,255,0.18);border-radius:1px;margin-top:4px}
+    ::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:3px}
+
+    /* ── DESKTOP ≥ 768px ─────────────────────────────────────────────── */
+    @media(min-width:768px){
+      :root{--nav-h:0px}
+      body{display:flex;min-height:100vh;padding-top:0}
+      .hamburger-btn{display:none}
+      #bottom-nav{position:fixed;left:0;top:0;bottom:0;width:200px;height:100vh;flex-direction:column;align-items:stretch;justify-content:flex-start;padding:32px 12px 24px;border-top:none;border-right:1px solid var(--border);background:#0f0f0f;gap:0;transform:none;max-width:none;overflow-y:auto}
+      #bottom-nav::before{content:'SUNO PROMPTS';font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:0.1em;color:rgba(255,255,255,0.5);padding:0 16px 24px;display:block;border-bottom:1px solid var(--border);margin-bottom:16px}
+      .nav-btn{flex:0 0 auto;flex-direction:row;justify-content:flex-start;gap:12px;padding:12px 16px;border-radius:10px;font-size:12px;min-height:44px;width:100%}
+      .nav-btn .nav-icon{font-size:18px}
+      .nav-btn.active{background:rgba(255,255,255,0.06)}
+      /* Folder panel: persistent sidebar, only shown on prompts view */
+      #drawer-overlay{display:none!important}
+      #drawer{position:fixed;left:200px;top:0;bottom:0;width:240px;transform:none!important;border-right:1px solid var(--border);border-radius:0;padding-top:24px;transition:none;display:none;flex-direction:column;z-index:90;background:#111}
+      body.folders-open #drawer{display:flex}
+      body.folders-open #app{margin-left:200px;width:calc(100% - 200px)}
+      #app{max-width:none;margin-left:200px;width:calc(100% - 200px);display:flex;justify-content:center}
+      .view{padding:32px 40px 80px;width:100%;max-width:760px}
+      .page-header{padding:0 0 20px}
+      .page-title{font-size:42px}
+      #fab{position:fixed;bottom:32px;left:200px;right:0;margin:0 auto;transform:none;width:fit-content}
+      #modal-overlay{align-items:center}
+      .modal-sheet{border-radius:16px;max-height:85vh;width:100%;max-width:560px;margin:0}
+      .mm-nav{bottom:24px}
+      input,textarea,select,button{font-size:14px}
+      .modal-input,.modal-textarea,.folder-select,.search-input{font-size:14px}
+    }
+    @media(min-width:1100px){
+      .view{max-width:860px}
+      .modal-sheet{max-width:620px}
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- PROMPTS VIEW -->
+  <div id="view-prompts" class="view active">
+    <div class="page-header">
+      <div class="page-header-left">
+        <div class="page-title" id="prompts-title">SUNO PROMPTS</div>
+      </div>
+      <button class="hamburger-btn" id="hamburger-btn">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+    <div id="search-wrapper" style="display:none" class="search-wrap">
+      <input type="search" class="search-input" id="search-input" placeholder="e.g. dark orchestral, lo-fi sad…" autocomplete="off">
+      <div id="search-controls" class="search-controls" style="display:none">
+        <div class="search-mode-toggle">
+          <button class="mode-btn active" data-action="set-mode" data-mode="or">OR</button>
+          <button class="mode-btn" data-action="set-mode" data-mode="and">AND</button>
+        </div>
+        <div id="search-tokens" class="search-tokens"></div>
+      </div>
+    </div>
+    <div id="search-results-bar" class="results-bar" style="display:none"></div>
+    <div id="prompt-list"></div>
+  </div>
+
+  <!-- MIX & MATCH VIEW -->
+  <div id="view-merge" class="view">
+    <div class="page-header"><div class="page-header-left">
+      <div class="page-title">MIX & MATCH</div>
+    </div></div>
+    <!-- Selection overview -->
+    <div id="mm-overview" class="mm-overview">
+      <div id="mm-overview-inner" class="mm-overview-empty">SELECT STYLES OR LYRICS BELOW</div>
+    </div>
+    <!-- Search bar (same markup as prompts page) -->
+    <div id="mm-search-wrap" class="search-wrap" style="margin-bottom:8px">
+      <input type="text" class="search-input" id="mm-search-input" placeholder="Search prompts…" autocomplete="off">
+    </div>
+    <div id="mm-filters" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:24px"></div>
+    <div id="mm-content"></div>
+    <div class="mm-nav">
+      <button class="mm-btn-next" id="mm-next" disabled>NEXT →</button>
+    </div>
+  </div>
+
+  <nav id="bottom-nav">
+    <button class="nav-btn active" data-view="prompts"><span class="nav-icon">📋</span><span class="nav-label">PROMPTS</span></button>
+    <button class="nav-btn" data-view="merge"><span class="nav-icon">🔀</span><span class="nav-label">MIX & MATCH</span></button>
+  </nav>
+</div>
+
+<button id="fab"><span style="font-size:22px;margin-top:-2px">+</span> NEW PROMPT</button>
+
+<!-- FOLDER DRAWER -->
+<div id="drawer-overlay"></div>
+<div id="drawer">
+  <div class="drawer-list" id="drawer-list"></div>
+  <div class="drawer-footer">
+    <button class="add-folder-btn" id="new-folder-btn">+ ADD FOLDER</button>
+  </div>
+  <div class="drawer-export-row">
+    <button id="export-btn" style="flex:1;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:10px;font-size:10px;letter-spacing:0.1em;font-weight:700;color:rgba(255,255,255,0.55);min-height:40px">⬇ EXPORT</button>
+    <button id="import-btn" style="flex:1;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:10px;font-size:10px;letter-spacing:0.1em;font-weight:700;color:rgba(255,255,255,0.55);min-height:40px">⬆ IMPORT</button>
+  </div>
+  <input type="file" id="import-file" accept=".json" style="display:none">
+</div>
+
+<!-- EDIT MODAL -->
+<div id="modal-overlay">
+  <div id="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modal-title">NEW PROMPT</div>
+    <div class="modal-field">
+      <label class="modal-label modal-label-green">NAME</label>
+      <input type="text" class="modal-input" id="m-name" placeholder="e.g. Melancholic Pop Verse" autocomplete="off">
+    </div>
+    <div class="modal-field">
+      <label class="modal-label modal-label-green">FOLDER</label>
+      <select class="folder-select" id="m-folder"><option value="">No folder</option></select>
+    </div>
+    <div class="modal-field">
+      <label class="modal-label modal-label-blue">STYLE PROMPT <span style="opacity:0.45;font-size:9px">— leave empty for lyrics-only</span></label>
+      <textarea class="modal-textarea" id="m-style" rows="3" placeholder="e.g. dreamy indie pop, reverb guitar, female vocals"></textarea>
+      <div class="char-counter-row"><span class="char-counter" id="m-style-counter">0 / 500</span></div>
+      <button class="tag-toggle" id="tag-toggle"><span>🎛 TAG PICKER</span><span id="tag-arrow">▾</span></button>
+      <div id="inline-picker" style="display:none" class="tag-picker-panel">
+        <div id="inline-groups"></div>
+        <div class="custom-row">
+          <input type="text" class="custom-input" id="inline-custom" placeholder="Add custom tag…" autocomplete="off">
+          <button class="custom-add" id="inline-add-btn">ADD</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-field">
+      <label class="modal-label modal-label-green">LYRICS <span style="opacity:0.45;font-size:9px">— [Section] tags auto-detected</span></label>
+      <textarea class="modal-textarea" id="m-lyrics" rows="10" placeholder="[Verse 1]&#10;Line 1&#10;Line 2&#10;&#10;[Chorus]&#10;Line 3"></textarea>
+    </div>
+    <div class="modal-field">
+      <label class="modal-label modal-label-gold">📝 NOTES</label>
+      <textarea class="modal-textarea notes-ta" id="m-notes" rows="3" placeholder="e.g. worked well at 120bpm…"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-cancel" id="m-cancel">CANCEL</button>
+      <button class="modal-save" id="m-save">SAVE</button>
+    </div>
+  </div>
+</div>
+
+
+<script>
+// ─── TAG GROUPS ───────────────────────────────────────────────────────────
+const DEFAULT_GROUPS=[
+  {id:'genre',icon:'🎵',name:'GENRE & FUSION',tags:['indie pop','dream pop','synth pop','hyperpop','bedroom pop','lo-fi hip hop','trap soul','R&B','neo-soul','jazz fusion','bossa nova','Afrobeats','reggaeton','dancehall','K-pop','J-pop fusion','city pop','anime OST','folk rock','shoegaze','post-punk','math rock','progressive rock','ambient electronic','UK garage','house','deep house','techno','drum and bass','cinematic orchestral','dark academia']},
+  {id:'energy',icon:'⚡',name:'ENERGY & MOOD',tags:['high-energy','driving','euphoric','intense','aggressive','anthemic','melancholic','brooding','nostalgic','haunting','serene','chill','romantic','dark','hopeful','bittersweet','ethereal','triumphant','introspective','cinematic tension','wistful','hypnotic','unsettling','playful','tender','epic']},
+  {id:'tempo',icon:'⏱',name:'TEMPO & GROOVE',tags:['slow burn','mid-tempo','uptempo','75bpm','90bpm','100bpm','120bpm','140bpm','160bpm','half-time feel','double time','laid-back groove','rubato','steady pulse','glacial tempo']},
+  {id:'structure',icon:'🏗',name:'SONG STRUCTURE',tags:['verse-chorus-bridge','through-composed','no chorus','loop-based','call and response','extended intro','extended outro','breakdown section','spoken word interlude','key change at bridge','pre-chorus','double chorus','fade out','cold ending','reprise']},
+  {id:'rhythm',icon:'🥁',name:'RHYTHMIC FEEL',tags:['4/4 straight','3/4 waltz','6/8 feel','5/4 odd meter','7/8 odd meter','syncopated','swing feel','shuffle','polyrhythm','off-beat emphasis','reggae skank','bossa nova clave','trap hi-hats','four-on-the-floor','half-time drums','broken beat']},
+  {id:'composition',icon:'🎼',name:'COMPOSITIONAL',tags:['motif-rich','leitmotif','recurring hook','chromatic','modal','pentatonic','dissonant','counterpoint','ostinato','pedal tone','key modulation','borrowed chord','suspended chords','call and response melody','melodic inversion']},
+  {id:'texture',icon:'🌊',name:'TEXTURE & DENSITY',tags:['sparse','minimalist','stripped back','wall of sound','maximalist','lush strings','dense layering','wide stereo field','dry mix','wet reverb','spacious','intimate','airy','thick low end','dynamic contrast','gradual build','sudden drop']},
+  {id:'vocals',icon:'🎤',name:'VOCALS',tags:['female lead','male lead','androgynous vocals','duet','choir','tight harmonies','falsetto','raspy','breathy','operatic','rap flow','spoken word','no vocals','instrumental','vocal chops','auto-tune','vocoder','whispered','belting']},
+  {id:'production',icon:'🎚',name:'PRODUCTION STYLE',tags:['polished','raw','lo-fi','vintage','analog warmth','tape saturation','digital clean','overdriven','heavily processed','reverb-heavy','glitchy','sample-based','live-sounding','cinematic mix','compressed','pumping sidechain']},
+  {id:'instrumentation',icon:'🎸',name:'INSTRUMENTATION',tags:['acoustic guitar','electric guitar','fingerpicked guitar','distorted guitar','bass guitar','upright bass','808 bass','live drums','drum machine','piano-led','Rhodes electric piano','synthesizer','synth pads','strings section','solo violin','brass section','trumpet','saxophone','flute','sitar','koto','ukulele','banjo','organ','harpsichord','harp']},
+  {id:'custom',icon:'⭐',name:'MY CUSTOM TAGS',tags:[]}
+];
+
+// ─── STORAGE ──────────────────────────────────────────────────────────────
+const SK='suno-v5';
+let prompts=[], folders=[], userCustomTags=[];
+function load(){try{const d=JSON.parse(localStorage.getItem(SK)||'{}');prompts=d.prompts||[];folders=d.folders||[];userCustomTags=d.customTags||[];}catch(e){}}
+function save(){try{localStorage.setItem(SK,JSON.stringify({prompts,folders,customTags:userCustomTags}));}catch(e){}}
+
+// ─── STATE ────────────────────────────────────────────────────────────────
+let activeTagIds=new Set();
+let currentView='prompts', editingId=null;
+let expandedCardIds=new Set(), showVersionsIds=new Set();
+let confirmDelId=null, searchQ='', searchMode='or';
+let typeFilter='all'; // kept for compat but unused in prompts view
+let activeFolderId=null;
+let pickerOpen=false, openGroupIds=new Set();
+// Mix & Match state
+let mmTab='style';       // kept for compat
+let mmStyleOn=new Set(); // selected style prompt ids
+let mmLyricId=null;      // selected lyric prompt id (single)
+let mmShowResults=false;
+let mmSearchQ='';
+let mmExpanded=new Set();
+let mmFilterStyle=false;
+let mmFilterLyric=false;
+let mmFilterFav=false;
+
+function mmReset(){mmStyleOn=new Set();mmLyricId=null;mmShowResults=false;mmSearchQ='';mmExpanded=new Set();mmFilterStyle=false;mmFilterLyric=false;mmFilterFav=false;window._mmFinalStyle=null;}
+
+function mmAssembledStyle(){
+  return [...mmStyleOn]
+    .map(id=>prompts.find(p=>p.id===id))
+    .filter(p=>p&&p.style&&p.style.trim())
+    .map(p=>resolveStyle(p.id)).filter(Boolean).join(', ');
+}
+function mmAssembledLyrics(){
+  if(!mmLyricId)return'';
+  const p=prompts.find(x=>x.id===mmLyricId);
+  return p?p.lyrics||'':'';
+}
+
+function renderMixMatch(){
+  const content=document.getElementById('mm-content');
+  const next=document.getElementById('mm-next');
+
+  // ── RESULTS SCREEN ────────────────────────────────────────────────────
+  if(mmShowResults){
+    document.getElementById('mm-overview').style.display='none';
+    document.getElementById('mm-search-wrap').style.display='none';
+    document.getElementById('mm-filters').style.display='none';
+    next.textContent='SAVE AS PROMPT'; next.disabled=false;
+    const finalStyle=window._mmFinalStyle!=null?window._mmFinalStyle:mmAssembledStyle();
+    const finalLyrics=mmAssembledLyrics();
+    content.innerHTML=`
+      <div>
+        <button data-action="mm-back-to-pick" style="font-size:10px;letter-spacing:0.1em;color:var(--muted);background:transparent;border:none;padding:8px 0;margin-bottom:4px">← BACK</button>
+        <div class="mm-preview-block mm-preview-style" style="margin-bottom:12px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <div class="mm-preview-label mm-preview-label-blue" style="margin:0">STYLE</div>
+            <button id="mm-copy-style-btn" style="font-size:10px;letter-spacing:0.1em;font-weight:700;color:var(--blue);border:1px solid rgba(74,158,255,0.3);border-radius:7px;padding:5px 12px;min-height:30px;background:transparent">COPY</button>
+          </div>
+          <textarea id="mm-style-edit" class="modal-textarea" rows="4" style="border-color:rgba(74,158,255,0.25);color:rgba(255,255,255,0.85);margin-top:0">${esc(finalStyle)}</textarea>
+          <div style="display:flex;justify-content:flex-end;margin-top:4px"><span id="mm-char-count" style="font-size:10px;color:var(--muted)">${finalStyle.length} / 500</span></div>
+        </div>
+        ${finalLyrics?`<div class="mm-preview-block mm-preview-lyrics" style="margin-bottom:16px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <div class="mm-preview-label mm-preview-label-green" style="margin:0">LYRICS</div>
+            <button id="mm-copy-lyrics-btn" style="font-size:10px;letter-spacing:0.1em;font-weight:700;color:var(--green);border:1px solid rgba(29,185,84,0.3);border-radius:7px;padding:5px 12px;min-height:30px;background:transparent">COPY</button>
+          </div>
+          <div class="mm-preview-text">${esc(finalLyrics)}</div>
+        </div>`:`<div style="font-size:11px;color:var(--muted);text-align:center;padding:12px 0">No lyrics selected</div>`}
+      </div>`;
+    requestAnimationFrame(()=>{
+      const ta=document.getElementById('mm-style-edit');
+      const sb=document.getElementById('mm-copy-style-btn');
+      const lb=document.getElementById('mm-copy-lyrics-btn');
+      if(ta)ta.addEventListener('input',e=>{window._mmFinalStyle=e.target.value;const cc=document.getElementById('mm-char-count');if(cc)cc.textContent=e.target.value.length+' / 500';});
+      if(sb)sb.addEventListener('click',async()=>{const v=document.getElementById('mm-style-edit');await copyText(v?v.value:finalStyle,sb,'COPY');});
+      if(lb)lb.addEventListener('click',async()=>await copyText(finalLyrics,lb,'COPY'));
+    });
+    return;
+  }
+
+  // ── PICK SCREEN ───────────────────────────────────────────────────────
+  document.getElementById('mm-overview').style.display='';
+  document.getElementById('mm-search-wrap').style.display='';
+  document.getElementById('mm-filters').style.display='';
+  next.textContent='NEXT →';
+  const totalSelected=mmStyleOn.size+(mmLyricId?1:0);
+  next.disabled=totalSelected<2;
+
+  // Overview panel
+  const ov=document.getElementById('mm-overview-inner');
+  if(totalSelected===0){
+    ov.className='mm-overview-empty';
+    ov.innerHTML='SELECT AT LEAST 2 STYLES OR LYRICS';
+  } else {
+    ov.className='';
+    let html='';
+    if(mmStyleOn.size>0){
+      const chips=[...mmStyleOn].map(sid=>{
+        const p=prompts.find(x=>x.id===sid);
+        return`<span class="mm-overview-chip mm-chip-style" data-action="mm-deselect-style" data-id="${sid}">${esc(p?p.name:'?')} <span class="mm-chip-x">✕</span></span>`;
+      }).join('');
+      html+=`<div class="mm-overview-section"><span class="mm-overview-label" style="color:var(--blue)">🎛 STYLE</span>${chips}</div>`;
+    }
+    if(mmLyricId){
+      const p=prompts.find(x=>x.id===mmLyricId);
+      html+=`<div class="mm-overview-section"><span class="mm-overview-label" style="color:var(--green)">🎵 LYRICS</span><span class="mm-overview-chip mm-chip-lyric" data-action="mm-deselect-lyric">${esc(p?p.name:'?')} <span class="mm-chip-x">✕</span></span></div>`;
+    }
+    if(totalSelected===1){
+      html+=`<div style="font-size:9px;letter-spacing:0.1em;color:var(--muted);margin-top:4px">SELECT 1 MORE TO CONTINUE</div>`;
+    }
+    ov.innerHTML=html;
+  }
+
+  // Filter pills — ALL resets, STYLE/LYRICS/FAV are independent toggles
+  const noFilter=!mmFilterStyle&&!mmFilterLyric&&!mmFilterFav;
+  document.getElementById('mm-filters').innerHTML=`
+    <button class="type-pill${noFilter?' active-all':''}" data-action="mm-filter" data-filter="all" style="flex:none;padding:6px 14px;min-height:34px">ALL</button>
+    <button class="type-pill mm-filter-pill${mmFilterStyle?' active-style':''}" data-action="mm-filter" data-filter="style" style="flex:none;padding:6px 14px;min-height:34px">🎛 STYLE</button>
+    <button class="type-pill mm-filter-pill${mmFilterLyric?' active-song':''}" data-action="mm-filter" data-filter="lyric" style="flex:none;padding:6px 14px;min-height:34px">🎵 LYRICS</button>
+    <button class="type-pill${mmFilterFav?' active-all':''}" data-action="mm-filter" data-filter="fav" style="flex:none;padding:6px 14px;min-height:34px">⭐ FAVORITES</button>`;
+
+  // Filter pool
+  const q=(mmSearchQ||'').toLowerCase().trim();
+  let pool=prompts.filter(p=>(p.style&&p.style.trim())||(p.lyrics&&p.lyrics.trim()));
+  if(mmFilterStyle) pool=pool.filter(p=>p.style&&p.style.trim());
+  if(mmFilterLyric) pool=pool.filter(p=>p.lyrics&&p.lyrics.trim());
+  if(mmFilterFav) pool=pool.filter(p=>p.pinned);
+  if(q) pool=pool.filter(p=>(p.name||'').toLowerCase().includes(q)||(p.style||'').toLowerCase().includes(q)||(p.lyrics||'').toLowerCase().includes(q));
+
+  if(!pool.length){
+    content.innerHTML=`<div class="empty-state"><div class="empty-icon">🎛</div><div class="empty-title">${q?'NO RESULTS':'NO PROMPTS'}</div><div class="empty-sub">${q?'Try a different search':'Add prompts with styles or lyrics first'}</div></div>`;
+    return;
+  }
+
+  const cardHtml=p=>{
+    const hasStyle=!!(p.style&&p.style.trim());
+    const hasLyrics=!!(p.lyrics&&p.lyrics.trim());
+    const styleOn=mmStyleOn.has(p.id);
+    const lyricOn=mmLyricId===p.id;
+    const expanded=mmExpanded.has(p.id);
+    const cyclic=styleOn?false:[...mmStyleOn].some(sid=>wouldCycle(sid,p.id)||wouldCycle(p.id,sid));
+    return`<div class="mm-card${styleOn?' mm-card-style-on':''}${lyricOn?' mm-card-lyric-on':''}">
+      <div class="mm-card-row">
+        <div style="flex:1;min-width:0">
+          <div class="mm-card-name">${p.pinned?'<span style="color:gold;font-size:13px;margin-right:4px">⭐</span>':''}${esc(p.name||'Untitled')}</div>
+          ${hasStyle?`<div class="mm-card-sub">${esc((p.style||'').slice(0,72))}${(p.style||'').length>72?'…':''}</div>`:''}
+        </div>
+        <div class="mm-card-actions">
+          ${hasStyle?`<button class="mm-sel-btn${styleOn?' style-on':''}" data-action="mm-toggle-style" data-id="${p.id}" title="Toggle style"${cyclic&&!styleOn?' disabled style="opacity:0.3"':''}>S</button>`:''}
+          ${hasLyrics?`<button class="mm-sel-btn${lyricOn?' lyric-on':''}" data-action="mm-pick-lyric" data-id="${p.id}" title="Use these lyrics">L</button>`:''}
+          <span class="mm-chevron${expanded?' open':''}" data-action="mm-expand" data-id="${p.id}">▶</span>
+        </div>
+      </div>
+      ${expanded?`<div class="mm-lyrics-preview">
+        ${hasStyle?`<div style="margin-bottom:${hasLyrics?'10px':'0'}"><span style="font-size:9px;letter-spacing:0.12em;font-weight:700;color:var(--blue);display:block;margin-bottom:4px">🎛 STYLE</span>${esc(p.style)}</div>`:''}
+        ${hasLyrics?`<div><span style="font-size:9px;letter-spacing:0.12em;font-weight:700;color:var(--green);display:block;margin-bottom:4px">🎵 LYRICS</span>${esc(p.lyrics)}</div>`:''}
+      </div>`:''}
+    </div>`;
+  };
+
+  const groups=groupAlpha(pool);
+  content.innerHTML=Object.keys(groups).sort().map(l=>alphaWrap(groups[l].map(cardHtml).join(''),l)).join('');
+}
+
+
+// ─── UTILS ────────────────────────────────────────────────────────────────
+function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function fmtDate(ts){return new Date(ts).toLocaleDateString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}
+function parseTags(s){return new Set((s||'').split(/[,.]/).map(t=>t.trim().toLowerCase()).filter(t=>t.length>1))}
+async function copyText(text,btn,label){
+  if(!text||!text.trim())return;
+  try{await navigator.clipboard.writeText(text);}
+  catch{const ta=document.createElement('textarea');ta.value=text;ta.style.cssText='position:fixed;opacity:0';document.body.appendChild(ta);ta.focus();ta.select();document.execCommand('copy');document.body.removeChild(ta);}
+  const orig=btn.textContent;btn.textContent='COPIED ✓';btn.classList.add('copied');
+  setTimeout(()=>{btn.textContent=label||orig;btn.classList.remove('copied');},2000);
+}
+function isSong(p){return !!(p.lyrics&&p.lyrics.trim())}
+function isStyleOnly(p){return !!(p.style&&p.style.trim()&&!isSong(p))}
+function updateCharCounter(el,countEl,max=500){
+  const len=(el.value||'').length;
+  countEl.textContent=len+' / '+max;
+  countEl.className='char-counter'+(len>max?' over':len>max*0.83?' warn':'');
+}
+function populateFolderSelect(id,val=''){
+  const sel=document.getElementById(id);if(!sel)return;
+  sel.innerHTML='<option value="">No folder</option>'+folders.map(f=>`<option value="${esc(f.id)}"${f.id===val?' selected':''}>${esc(f.name)}</option>`).join('');
+}
+
+// ─── SECTION PARSING ─────────────────────────────────────────────────────
+function parseSections(lyrics){
+  if(!lyrics) return [];
+  const regex=/\[([^\]\n]+)\]/g;
+  const matches=[]; let m;
+  while((m=regex.exec(lyrics))!==null) matches.push({label:m[1].trim(),index:m.index,fullLen:m[0].length});
+  return matches.map((match,i)=>{
+    const contentStart=match.index+match.fullLen;
+    const contentEnd=i<matches.length-1?matches[i+1].index:lyrics.length;
+    const content=lyrics.slice(contentStart,contentEnd).trim();
+    return{label:match.label,content,fullBlock:`[${match.label}]\n${content}`};
+  });
+}
+
+// ─── GROUPS ───────────────────────────────────────────────────────────────
+function getGroups(){
+  const saved=new Set();prompts.forEach(p=>parseTags(p.style).forEach(t=>saved.add(t)));
+  return DEFAULT_GROUPS.map(g=>{
+    if(g.id==='custom'){const m=[...new Set([...userCustomTags,...saved])].sort();return{...g,tags:m};}
+    return g;
+  }).filter(g=>!(g.id==='custom'&&g.tags.length===0));
+}
+function renderGroups(containerId,ctx){
+  const el=document.getElementById(containerId);if(!el)return;
+  el.innerHTML=getGroups().map(g=>{
+    const ac=g.tags.filter(t=>activeTagIds.has(t)).length;
+    const open=openGroupIds.has(g.id+'-'+ctx);
+    return`<div class="group-row">
+      <div class="group-header" data-action="toggle-group" data-gid="${g.id}" data-ctx="${ctx}">
+        <div class="group-header-left"><span class="group-icon">${g.icon}</span><span class="group-name">${g.name}</span>${ac>0?`<span class="group-count">${ac} ON</span>`:''}</div>
+        <span class="group-arrow ${open?'open':''}">▾</span>
+      </div>
+      <div class="group-body ${open?'open':''}">
+        ${g.tags.length===0?`<div style="font-size:11px;color:var(--muted)">No custom tags yet</div>`
+          :`<div class="tag-cloud">${g.tags.map(t=>`<button class="tag-chip ${activeTagIds.has(t)?'active':''}" data-action="toggle-tag" data-tag="${esc(t)}" data-ctx="${ctx}">${esc(t)}</button>`).join('')}</div>`}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ─── INLINE PICKER ────────────────────────────────────────────────────────
+function renderInlinePicker(){renderGroups('inline-groups','inline');}
+function syncStyleFromTags(){if(activeTagIds.size>0){document.getElementById('m-style').value=[...activeTagIds].join(', ');updateCharCounter(document.getElementById('m-style'),document.getElementById('m-style-counter'));}}
+function openPicker(){pickerOpen=true;document.getElementById('inline-picker').style.display='block';document.getElementById('tag-arrow').textContent='▴';renderInlinePicker();}
+function closePicker(){pickerOpen=false;document.getElementById('inline-picker').style.display='none';document.getElementById('tag-arrow').textContent='▾';}
+
+// ─── SEARCH ───────────────────────────────────────────────────────────────
+function tokenize(q){return q.trim().toLowerCase().split(/\s+/).filter(t=>t.length>0);}
+function fuzzyScore(hay,needle){
+  if(hay.includes(needle))return 3;
+  let hi=0;for(let c of needle){hi=hay.indexOf(c,hi);if(hi===-1)return 0;hi++;}
+  return 1;
+}
+function scorePrompt(p,tokens){
+  const sourceNames=(p.sourceIds||[])
+    .map(id=>prompts.find(x=>x.id===id))
+    .filter(Boolean).map(x=>(x.name||'').toLowerCase()).join(' ');
+  const fields=[
+    {text:(p.name||'').toLowerCase(),weight:3},
+    {text:(p.style||'').toLowerCase(),weight:2},
+    {text:(p.lyrics||'').toLowerCase(),weight:1},
+    {text:(p.notes||'').toLowerCase(),weight:1},
+    {text:sourceNames,weight:2},
+  ];
+  let total=0;const hits=new Set();
+  tokens.forEach(tok=>{
+    let ts=0;fields.forEach(f=>{const s=fuzzyScore(f.text,tok);if(s>0){ts+=s*f.weight;hits.add(tok);}});
+    total+=ts;
+  });
+  return{score:total,hitTokens:hits};
+}
+function getFiltered(){
+  let list=prompts;
+  if(activeFolderId==='__pinned') list=prompts.filter(p=>p.pinned);
+  else if(activeFolderId) list=prompts.filter(p=>p.folderId===activeFolderId);
+  const tokens=tokenize(searchQ);
+  if(!tokens.length) return[...list.filter(p=>p.pinned),...list.filter(p=>!p.pinned)];
+  const scored=list.map(p=>{const{score,hitTokens}=scorePrompt(p,tokens);return{p,score,hitTokens};});
+  const filtered=scored.filter(({score,hitTokens})=>{
+    if(!score)return false;
+    return searchMode==='and'?tokens.every(t=>hitTokens.has(t)):true;
+  });
+  filtered.sort((a,b)=>b.score-a.score||(b.p.pinned?1:0)-(a.p.pinned?1:0));
+  return filtered.map(x=>({...x.p,_score:x.score,_hits:x.hitTokens}));
+}
+function renderSearchControls(){
+  const tokens=tokenize(searchQ);
+  const ctrl=document.getElementById('search-controls');
+  const tokensEl=document.getElementById('search-tokens');
+  const bar=document.getElementById('search-results-bar');
+  if(!tokens.length){ctrl.style.display='none';bar.style.display='none';return;}
+  ctrl.style.display='flex';
+  const filtered=getFiltered();
+  const allHits=new Set(filtered.flatMap(p=>[...(p._hits||[])]));
+  tokensEl.innerHTML=tokens.map(t=>`<span class="search-token ${allHits.has(t)?'hit':''}">${esc(t)}</span>`).join('');
+  bar.style.display=filtered.length?'block':'none';
+  bar.textContent=filtered.length+' RESULT'+(filtered.length!==1?'S':'')+' · SORTED BY RELEVANCE';
+}
+
+// ─── VIRTUAL STYLE HELPERS ───────────────────────────────────────────────
+let expandedVsIds=new Set();
+
+function resolveStyle(pid,visited=new Set()){
+  if(visited.has(pid))return'';
+  visited.add(pid);
+  const p=prompts.find(x=>x.id===pid);
+  if(!p)return'';
+  if(!p.sourceIds||!p.sourceIds.length)return p.style||'';
+  return p.sourceIds.map(id=>resolveStyle(id,new Set(visited))).filter(Boolean).join(', ');
+}
+function depCount(id){return prompts.filter(p=>(p.sourceIds||[]).includes(id)).length;}
+function wouldCycle(targetId,candidateId,visited=new Set()){
+  if(candidateId===targetId)return true;
+  if(visited.has(candidateId))return false;
+  visited.add(candidateId);
+  const p=prompts.find(x=>x.id===candidateId);
+  if(!p||!p.sourceIds)return false;
+  return p.sourceIds.some(sid=>wouldCycle(targetId,sid,new Set(visited)));
+}
+function lineageRows(pid,depth=0,visited=new Set()){
+  if(depth>4||visited.has(pid))return[];
+  visited.add(pid);
+  const p=prompts.find(x=>x.id===pid);
+  if(!p)return[];
+  const rows=[];
+  (p.sourceIds||[]).forEach(sid=>{
+    const src=prompts.find(x=>x.id===sid);
+    const pad='&nbsp;'.repeat(depth*4);
+    rows.push(`<div class="vs-lineage-row"><span class="vs-lineage-indent">${pad}└─</span><span>${esc(src?src.name:'[deleted]')}</span></div>`);
+    rows.push(...lineageRows(sid,depth+1,new Set(visited)));
+  });
+  return rows;
+}
+
+// ─── PROMPTS ──────────────────────────────────────────────────────────────
+// ─── ALPHA GROUPING ───────────────────────────────────────────────────────
+function groupAlpha(items){
+  const sorted=[...items].sort((a,b)=>(a.name||'').localeCompare(b.name||'',undefined,{sensitivity:'base'}));
+  const groups={};
+  sorted.forEach(p=>{
+    const letter=(p.name||'#').trim()[0].toUpperCase();
+    const key=/[A-Z]/.test(letter)?letter:'#';
+    if(!groups[key])groups[key]=[];
+    groups[key].push(p);
+  });
+  return groups;
+}
+function alphaWrap(itemsHtml, letter){
+  return`<div class="alpha-header">${letter}</div>${itemsHtml}`;
+}
+
+// ─── RENDER PROMPTS ───────────────────────────────────────────────────────
+function renderPrompts(){
+  const folderName=activeFolderId==='__pinned'?'FAVORITES':activeFolderId?(folders.find(f=>f.id===activeFolderId)||{}).name||'FOLDER':'SUNO PROMPTS';
+  document.getElementById('prompts-title').textContent=folderName;
+  document.getElementById('search-wrapper').style.display=prompts.length>1?'block':'none';
+  // type filter pills
+  renderSearchControls();
+  const filtered=getFiltered();
+  const isSearching=tokenize(searchQ).length>0;
+  const list=document.getElementById('prompt-list');
+  if(!filtered.length){
+    list.innerHTML=`<div class="empty-state"><div class="empty-icon">🎵</div><div class="empty-title">${isSearching?'NO RESULTS':'NO PROMPTS'}</div><div class="empty-sub">${isSearching?'Try different terms or switch OR ↔ AND':'Tap + to add your first prompt'}</div></div>`;
+    return;
+  }
+  const cardHtml=p=>{
+    const del=confirmDelId===p.id;
+    const showVers=showVersionsIds.has(p.id);
+    const song=isSong(p);
+    const folder=p.folderId?folders.find(f=>f.id===p.folderId):null;
+    const sections=song?parseSections(p.lyrics):[];
+    const hasSources=!!(p.sourceIds&&p.sourceIds.length);
+    const open=expandedCardIds.has(p.id);
+    const deps=depCount(p.id);
+    const preview=song?(sections.length?sections.map(s=>s.label).join(' · '):(p.lyrics||'').slice(0,48))
+      :(hasSources?p.sourceIds.map(id=>{const s=prompts.find(x=>x.id===id);return s?s.name:'?';}).join(' + '):(p.style||'').slice(0,52));
+    const relBadge=(isSearching&&p._score)?`<span class="relevance-badge">${p._hits?[...p._hits].length:0}/${tokenize(searchQ).length} MATCH</span>`:'';
+    const depBadge=deps>0?`<span class="vs-dep-badge">used in ${deps}</span>`:'';
+
+    // Style field: chips or resolved
+    const vsOpen=expandedVsIds.has(p.id);
+    const resolvedStr=hasSources?resolveStyle(p.id):(p.style||'');
+    const styleField=p.style||hasSources?`<div class="field-block">
+      <div class="field-row">
+        <span class="field-label field-label-blue">STYLE${hasSources?' ✦':''}</span>
+        <button class="copy-btn" data-action="copy-style" data-id="${p.id}">COPY STYLE</button>
+      </div>
+      ${hasSources
+        ?`<div class="vs-chips" data-action="toggle-vs" data-id="${p.id}" style="cursor:pointer">
+            ${p.sourceIds.map(sid=>{const src=prompts.find(x=>x.id===sid);return`<span class="vs-chip${src?'':' deleted'}">${esc(src?src.name:'[deleted]')}</span>`;}).join('')}
+            <button class="vs-resolve-toggle" data-action="toggle-vs" data-id="${p.id}">${vsOpen?'▴':'{ }'}</button>
+          </div>
+          ${vsOpen?`<div class="vs-resolved-preview">${esc(resolvedStr)||'(empty)'}</div>
+          ${lineageRows(p.id).length>1?`<div class="vs-lineage">${lineageRows(p.id).join('')}</div>`:''}`
+          :''}`
+        :`<div class="field-content">${esc(p.style)}</div>`}
+    </div>`:'';
+    return`<div class="card ${p.pinned?'pinned':''} ${song?'is-song':'is-style'}">
+      <div class="card-header">
+        <button class="pin-btn ${p.pinned?'pinned':''}" data-action="toggle-pin" data-id="${p.id}">⭐</button>
+        <div class="card-info" data-action="toggle-card" data-id="${p.id}">
+          <div class="card-title">${esc(p.name||'Untitled')}${depBadge}</div>
+          <div class="card-meta">
+            <div class="card-sub">${!open?esc(preview):''}</div>
+            <span class="type-badge ${song?'type-badge-song':'type-badge-style'}">${song?'SONG':'STYLE'}</span>
+            ${folder?`<span class="folder-tag">📁 ${esc(folder.name)}</span>`:''}
+            ${relBadge}
+          </div>
+        </div>
+        <div class="card-chevron ${open?'open':''}" data-action="toggle-card" data-id="${p.id}">▾</div>
+      </div>
+      ${open?`<div class="card-body">
+        <div class="card-divider"></div>
+        ${styleField}
+        ${song?`<div class="field-block">
+          <div class="field-row"><span class="field-label">LYRICS</span><button class="copy-btn" data-action="copy-lyrics" data-id="${p.id}">COPY LYRICS</button></div>
+          <div class="field-content lyrics">${esc(p.lyrics)}</div>
+        </div>
+        ${sections.length?`<div class="sections-header">🎯 ${sections.length} SECTION${sections.length>1?'S':''} DETECTED</div>
+        ${sections.map(sec=>{
+          const secStyle=(p.sectionStyles||{})[sec.label]||'';
+          return`<div class="section-row">
+            <div class="section-label-row"><span class="section-badge">${esc(sec.label)}</span></div>
+            <div class="section-preview">${esc(sec.content.slice(0,80))}${sec.content.length>80?'…':''}</div>
+            <div class="section-style-row">
+              <input type="text" class="section-style-input" data-action="section-style-input" data-id="${p.id}" data-section="${esc(sec.label)}" value="${esc(secStyle)}" placeholder="section style tags…">
+              <button class="section-save-btn" data-action="save-section-style" data-id="${p.id}" data-section="${esc(sec.label)}">SAVE</button>
+            </div>
+          </div>`;
+        }).join('')}`:''}`:''}
+        ${p.notes?`<div class="field-block" style="margin-top:4px">
+          <div class="field-row"><span class="field-label" style="color:var(--gold)">📝 NOTES</span></div>
+          <div class="field-content notes-content">${esc(p.notes)}</div>
+        </div>`:''}
+        ${(p.versions||[]).length?`<button class="versions-toggle" data-action="toggle-versions" data-id="${p.id}">
+          <span>🕐 ${p.versions.length} PREVIOUS VERSION${p.versions.length>1?'S':''}</span><span>${showVers?'▴':'▾'}</span>
+        </button>
+        ${showVers?`<div class="version-list">${p.versions.map((v,i)=>`<div class="version-item">
+          <div class="version-info"><div class="version-date">${fmtDate(v.savedAt)}</div><div class="version-preview">${esc((v.style||v.name||'—').slice(0,60))}</div></div>
+          <button class="version-restore" data-action="restore-version" data-id="${p.id}" data-vidx="${i}">RESTORE</button>
+        </div>`).join('')}</div>`:''}`:''
+        }
+        <div class="card-actions">
+          <button class="act-btn" data-action="edit" data-id="${p.id}">✏️ EDIT</button>
+          ${del
+            ?`<button class="act-btn del-cancel" data-action="cancel-del">CANCEL</button><button class="act-btn del-confirm" data-action="delete" data-id="${p.id}">DELETE</button>`
+            :`<button class="act-btn trash" data-action="confirm-del" data-id="${p.id}">🗑</button>`}
+        </div>
+      </div>`:''}
+    </div>`;
+  };
+  // Pinned float to top without grouping; rest alpha-grouped
+  const pinned=filtered.filter(p=>p.pinned);
+  const rest=filtered.filter(p=>!p.pinned);
+  const groups=groupAlpha(rest);
+  const pinnedHtml=pinned.map(cardHtml).join('');
+  const groupedHtml=Object.keys(groups).sort().map(letter=>
+    alphaWrap(groups[letter].map(cardHtml).join(''), letter)
+  ).join('');
+  list.innerHTML=pinnedHtml+groupedHtml;
+}
+
+// ─── MODAL ────────────────────────────────────────────────────────────────
+function openModal(p){
+  activeTagIds=new Set();closePicker();
+  populateFolderSelect('m-folder',p?p.folderId:'');
+  if(p){
+    editingId=p.id;
+    document.getElementById('modal-title').textContent='EDIT PROMPT';
+    document.getElementById('m-name').value=p.name||'';
+    document.getElementById('m-style').value=p.style||'';
+    document.getElementById('m-lyrics').value=p.lyrics||'';
+    document.getElementById('m-notes').value=p.notes||'';
+    parseTags(p.style).forEach(t=>activeTagIds.add(t));
+  } else {
+    editingId=null;
+    document.getElementById('modal-title').textContent='NEW PROMPT';
+    ['m-name','m-style','m-lyrics','m-notes'].forEach(id=>document.getElementById(id).value='');
+    if(activeFolderId&&activeFolderId!=='__pinned') document.getElementById('m-folder').value=activeFolderId;
+  }
+  updateCharCounter(document.getElementById('m-style'),document.getElementById('m-style-counter'));
+  document.getElementById('modal-overlay').classList.add('open');
+  setTimeout(()=>document.getElementById('m-name').focus(),80);
+}
+function closeModal(){document.getElementById('modal-overlay').classList.remove('open');editingId=null;activeTagIds=new Set();}
+function saveModal(){
+  const name=document.getElementById('m-name').value.trim();
+  const style=document.getElementById('m-style').value.trim();
+  const lyrics=document.getElementById('m-lyrics').value.trim();
+  const notes=document.getElementById('m-notes').value.trim();
+  const folderId=document.getElementById('m-folder').value||null;
+  const existing=editingId?prompts.find(p=>p.id===editingId):null;
+  if(existing){
+    const versions=[{name:existing.name,style:existing.style,lyrics:existing.lyrics,notes:existing.notes,savedAt:existing.updatedAt||existing.createdAt},...(existing.versions||[])].slice(0,5);
+    prompts=prompts.map(p=>p.id===editingId?{...p,name,style,lyrics,notes,folderId,versions,updatedAt:Date.now()}:p);
+  } else {
+    prompts.unshift({id:Date.now().toString(),name,style,lyrics,notes,folderId,pinned:false,sectionStyles:{},versions:[],createdAt:Date.now(),updatedAt:Date.now()});
+  }
+  save();closeModal();renderPrompts();renderDrawer();
+}
+
+// ─── DRAWER ───────────────────────────────────────────────────────────────
+function openDrawer(){document.getElementById('drawer').classList.add('open');document.getElementById('drawer-overlay').classList.add('open');renderDrawer();}
+function closeDrawer(){document.getElementById('drawer').classList.remove('open');document.getElementById('drawer-overlay').classList.remove('open');}
+function renderDrawer(renamingId=null){
+  const all=prompts.length, pinned=prompts.filter(p=>p.pinned).length;
+  let html=`
+    <div class="drawer-item ${activeFolderId===null?'active-folder':''}" data-action="drawer-filter" data-fid="__all">
+      <span class="drawer-item-icon">📋</span><span class="drawer-item-label">ALL PROMPTS</span><span class="drawer-item-count">${all}</span>
+    </div>
+    <div class="drawer-item ${activeFolderId==='__pinned'?'active-folder':''}" data-action="drawer-filter" data-fid="__pinned">
+      <span class="drawer-item-icon">⭐</span><span class="drawer-item-label">FAVORITES</span><span class="drawer-item-count">${pinned}</span>
+    </div>`;
+  if(folders.length){
+    html+=`<div class="drawer-divider"></div>`;
+    folders.forEach(f=>{
+      const cnt=prompts.filter(p=>p.folderId===f.id).length;
+      if(f.id===renamingId){
+        html+=`<div class="drawer-item" style="padding:8px 12px">
+          <input class="folder-rename-input" id="folder-rename-${esc(f.id)}" value="${esc(f.name)}" autocomplete="off" data-fid="${esc(f.id)}">
+        </div>`;
+      } else {
+        html+=`<div class="drawer-item ${activeFolderId===f.id?'active-folder':''}" data-action="drawer-filter" data-fid="${esc(f.id)}">
+          <span class="drawer-item-icon">📁</span>
+          <span class="drawer-item-label" data-action="rename-folder" data-fid="${esc(f.id)}" style="cursor:text">${esc(f.name)}</span>
+          <span class="drawer-item-count">${cnt}</span>
+          <button data-action="delete-folder" data-fid="${esc(f.id)}" style="font-size:12px;color:rgba(255,100,100,0.4);padding:4px;margin-left:4px">✕</button>
+        </div>`;
+      }
+    });
+  }
+  document.getElementById('drawer-list').innerHTML=html;
+  if(renamingId){
+    const inp=document.getElementById('folder-rename-'+renamingId);
+    if(inp){
+      inp.focus();inp.select();
+      const commit=()=>{
+        const f=folders.find(x=>x.id===renamingId);
+        if(f){f.name=inp.value.trim()||'Untitled';save();}
+        renderDrawer();
+      };
+      inp.addEventListener('blur',commit);
+      inp.addEventListener('keydown',e=>{if(e.key==='Enter'){inp.blur();}if(e.key==='Escape'){const f=folders.find(x=>x.id===renamingId);if(f&&f.name==='Untitled'){folders=folders.filter(x=>x.id!==renamingId);save();}renderDrawer();}});
+    }
+  }
+}
+
+// ─── NAV ──────────────────────────────────────────────────────────────────
+function setView(v){
+  currentView=v;
+  document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(el=>el.classList.remove('active'));
+  document.getElementById('view-'+v).classList.add('active');
+  document.querySelector(`[data-view="${v}"]`).classList.add('active');
+  document.getElementById('fab').style.display=v==='prompts'?'flex':'none';
+  document.body.classList.toggle('folders-open', v==='prompts' && window.innerWidth>=768);
+  if(v==='prompts')renderPrompts();
+  if(v==='merge'){mmReset();renderMixMatch();}
+
+  // MM next button
+  if(v==='merge'){
+    document.getElementById('mm-next').onclick=()=>{
+      if(mmShowResults){mmSave();return;}
+      mmShowResults=true;renderMixMatch();
+    };
+  }
+}
+
+function mmSave(){
+  const finalStyle=window._mmFinalStyle!=null?window._mmFinalStyle:mmAssembledStyle();
+  const finalLyrics=mmAssembledLyrics();
+  const pureAssembled=mmAssembledStyle();
+  const isEdited=window._mmFinalStyle!=null&&window._mmFinalStyle.trim()!==pureAssembled.trim();
+  const sourceIds=isEdited?[]:[...mmStyleOn];
+  const existing=document.getElementById('mm-save-form');
+  if(existing){
+    const name=document.getElementById('mm-name').value.trim()||'Mixed Prompt';
+    const folderId=document.getElementById('mm-folder-select').value||null;
+    prompts.unshift({id:Date.now().toString(),name,style:finalStyle,lyrics:finalLyrics,notes:'',folderId,pinned:false,sectionStyles:{},sourceIds,versions:[],createdAt:Date.now(),updatedAt:Date.now()});
+    save();mmReset();setView('prompts');return;
+  }
+  const form=document.createElement('div');
+  form.id='mm-save-form';
+  form.style.cssText='margin:16px 16px 0;background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:16px';
+  form.innerHTML=`<div style="font-size:10px;letter-spacing:0.14em;color:var(--green);font-weight:700;margin-bottom:8px">NAME</div>
+    <input type="text" class="modal-input" id="mm-name" placeholder="e.g. Dark Orchestral Hybrid" autocomplete="off" style="margin-bottom:12px">
+    <div style="font-size:10px;letter-spacing:0.14em;color:var(--green);font-weight:700;margin-bottom:8px">FOLDER (OPTIONAL)</div>
+    <select class="folder-select" id="mm-folder-select"><option value="">No folder</option></select>`;
+  document.getElementById('mm-content').appendChild(form);
+  populateFolderSelect('mm-folder-select','');
+  document.getElementById('mm-next').textContent='CONFIRM SAVE';
+  setTimeout(()=>document.getElementById('mm-name')&&document.getElementById('mm-name').focus(),80);
+}
+
+// ─── EVENTS ───────────────────────────────────────────────────────────────
+document.addEventListener('click',async e=>{
+  const el=e.target.closest('[data-action]');if(!el)return;
+  const{action,id,tag,ctx,gid,fid,vidx,section}=el.dataset;
+
+  // Card actions
+  if(action==='toggle-card'){expandedCardIds.has(id)?expandedCardIds.delete(id):expandedCardIds.add(id);if(confirmDelId===id)confirmDelId=null;renderPrompts();}
+  else if(action==='toggle-pin'){const p=prompts.find(x=>x.id===id);if(p){p.pinned=!p.pinned;save();renderPrompts();renderDrawer();}}
+  else if(action==='copy-style'){const p=prompts.find(x=>x.id===id);if(p)await copyText(resolveStyle(p.id),el,'COPY STYLE');}
+  else if(action==='toggle-vs'){expandedVsIds.has(id)?expandedVsIds.delete(id):expandedVsIds.add(id);renderPrompts();}
+  else if(action==='copy-lyrics'){const p=prompts.find(x=>x.id===id);if(p)await copyText(p.lyrics,el,'COPY LYRICS');}
+  else if(action==='edit'){openModal(prompts.find(p=>p.id===id));}
+  else if(action==='confirm-del'){confirmDelId=id;renderPrompts();}
+  else if(action==='cancel-del'){confirmDelId=null;renderPrompts();}
+  else if(action==='delete'){
+    // Bake resolved style into any prompts that reference this id
+    prompts=prompts.map(p=>{
+      if(!(p.sourceIds||[]).includes(id))return p;
+      const baked=resolveStyle(p.id); // resolve now before deletion
+      const newSources=p.sourceIds.filter(s=>s!==id);
+      return{...p,style:baked,sourceIds:newSources.length?newSources:undefined};
+    });
+    prompts=prompts.filter(p=>p.id!==id);
+    expandedCardIds.delete(id);expandedVsIds.delete(id);confirmDelId=null;
+    save();renderPrompts();renderDrawer();
+  }
+  else if(action==='toggle-versions'){showVersionsIds.has(id)?showVersionsIds.delete(id):showVersionsIds.add(id);renderPrompts();}
+  else if(action==='restore-version'){
+    const p=prompts.find(x=>x.id===id);if(!p)return;
+    const v=p.versions[parseInt(vidx)];if(!v)return;
+    const newVersions=[{name:p.name,style:p.style,lyrics:p.lyrics,notes:p.notes,savedAt:p.updatedAt||p.createdAt},...p.versions.filter((_,i)=>i!==parseInt(vidx))].slice(0,5);
+    prompts=prompts.map(x=>x.id===id?{...x,name:v.name||x.name,style:v.style||'',lyrics:v.lyrics||'',notes:v.notes||'',versions:newVersions,updatedAt:Date.now()}:x);
+    save();renderPrompts();
+  }
+  // Section style save
+  else if(action==='save-section-style'){
+    const p=prompts.find(x=>x.id===id);if(!p)return;
+    const input=document.querySelector(`[data-action="section-style-input"][data-id="${id}"][data-section="${section}"]`);
+    if(!input)return;
+    if(!p.sectionStyles)p.sectionStyles={};
+    p.sectionStyles[section]=input.value.trim();
+    p.updatedAt=Date.now();save();
+    el.textContent='SAVED ✓';el.classList.add('saved');
+    setTimeout(()=>{el.textContent='SAVE';el.classList.remove('saved');},2000);
+  }
+  // Tag groups/tags
+  else if(action==='toggle-group'){const key=gid+'-'+ctx;openGroupIds.has(key)?openGroupIds.delete(key):openGroupIds.add(key);renderInlinePicker();}
+  else if(action==='toggle-tag'){activeTagIds.has(tag)?activeTagIds.delete(tag):activeTagIds.add(tag);syncStyleFromTags();renderInlinePicker();}
+  // Search mode
+  else if(action==='set-mode'){searchMode=el.dataset.mode;document.querySelectorAll('.mode-btn').forEach(b=>b.classList.toggle('active',b.dataset.mode===searchMode));renderPrompts();}
+  // Drawer
+  else if(action==='drawer-filter'){activeFolderId=fid==='__all'?null:fid;closeDrawer();renderPrompts();}
+  else if(action==='rename-folder'){e.stopPropagation();renderDrawer(fid);}
+  else if(action==='delete-folder'){e.stopPropagation();folders=folders.filter(f=>f.id!==fid);prompts=prompts.map(p=>p.folderId===fid?{...p,folderId:null}:p);save();renderDrawer();renderPrompts();}
+  // Mix & match
+  else if(action==='mm-filter'){
+    const f=el.dataset.filter;
+    if(f==='all'){mmFilterStyle=false;mmFilterLyric=false;mmFilterFav=false;}
+    else if(f==='style') mmFilterStyle=!mmFilterStyle;
+    else if(f==='lyric') mmFilterLyric=!mmFilterLyric;
+    else if(f==='fav') mmFilterFav=!mmFilterFav;
+    renderMixMatch();
+  }
+  else if(action==='mm-toggle-style'){
+    if(mmStyleOn.has(id))mmStyleOn.delete(id);else mmStyleOn.add(id);
+    renderMixMatch();
+  }
+  else if(action==='mm-pick-lyric'){
+    mmLyricId=mmLyricId===id?null:id;
+    renderMixMatch();
+  }
+  else if(action==='mm-expand'){
+    mmExpanded.has(id)?mmExpanded.delete(id):mmExpanded.add(id);
+    renderMixMatch();
+  }
+  else if(action==='mm-deselect-style'){
+    mmStyleOn.delete(id);renderMixMatch();
+  }
+  else if(action==='mm-deselect-lyric'){
+    mmLyricId=null;renderMixMatch();
+  }
+  else if(action==='mm-back-to-pick'){
+    mmShowResults=false;window._mmFinalStyle=null;renderMixMatch();
+  }
+});
+
+// Nav
+document.querySelectorAll('.nav-btn').forEach(btn=>btn.addEventListener('click',()=>setView(btn.dataset.view)));
+document.getElementById('fab').addEventListener('click',()=>openModal(null));
+
+// Hamburger
+document.getElementById('hamburger-btn').addEventListener('click',openDrawer);
+document.getElementById('mm-search-input').addEventListener('input',e=>{mmSearchQ=e.target.value;renderMixMatch();});
+document.getElementById('drawer-overlay').addEventListener('click',closeDrawer);
+document.getElementById('new-folder-btn').addEventListener('click',()=>{
+  const id=Date.now().toString();
+  folders.push({id,name:'Untitled'});save();renderDrawer(id);
+});
+
+// Modal
+document.getElementById('m-cancel').addEventListener('click',closeModal);
+document.getElementById('m-save').addEventListener('click',saveModal);
+document.getElementById('modal-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('modal-overlay'))closeModal();});
+document.getElementById('tag-toggle').addEventListener('click',()=>pickerOpen?closePicker():openPicker());
+document.getElementById('m-style').addEventListener('input',e=>{
+  activeTagIds=new Set([...parseTags(e.target.value)]);
+  updateCharCounter(e.target,document.getElementById('m-style-counter'));
+  if(pickerOpen)renderInlinePicker();
+});
+
+// Inline custom tag
+function addInlineTag(){const inp=document.getElementById('inline-custom');const t=inp.value.trim().toLowerCase();if(!t)return;activeTagIds.add(t);if(!userCustomTags.includes(t)){userCustomTags.push(t);save();}inp.value='';syncStyleFromTags();renderInlinePicker();}
+document.getElementById('inline-add-btn').addEventListener('click',addInlineTag);
+document.getElementById('inline-custom').addEventListener('keydown',e=>{if(e.key==='Enter')addInlineTag();});
+
+// Search
+document.getElementById('search-input').addEventListener('input',e=>{searchQ=e.target.value;renderPrompts();});
+
+// ─── EXPORT / IMPORT ─────────────────────────────────────────────────────
+document.getElementById('export-btn').addEventListener('click',()=>{
+  const data=JSON.stringify({prompts,folders,customTags:userCustomTags},null,2);
+  const blob=new Blob([data],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  const date=new Date().toISOString().slice(0,10);
+  a.href=url;a.download=`suno-prompts-${date}.json`;
+  document.body.appendChild(a);a.click();
+  document.body.removeChild(a);URL.revokeObjectURL(url);
+  closeDrawer();
+});
+
+document.getElementById('import-btn').addEventListener('click',()=>{
+  document.getElementById('import-file').value='';
+  document.getElementById('import-file').click();
+});
+
+document.getElementById('import-file').addEventListener('change',e=>{
+  const file=e.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=evt=>{
+    try{
+      const d=JSON.parse(evt.target.result);
+      if(!d.prompts||!Array.isArray(d.prompts)) throw new Error('Invalid file');
+      // Merge: add imported prompts that don't already exist by id
+      const existingIds=new Set(prompts.map(p=>p.id));
+      const newPrompts=d.prompts.filter(p=>!existingIds.has(p.id));
+      const existingFolderIds=new Set(folders.map(f=>f.id));
+      const newFolders=(d.folders||[]).filter(f=>!existingFolderIds.has(f.id));
+      const newTags=(d.customTags||[]).filter(t=>!userCustomTags.includes(t));
+      prompts=[...newPrompts,...prompts];
+      folders=[...folders,...newFolders];
+      userCustomTags=[...userCustomTags,...newTags];
+      save();closeDrawer();renderPrompts();
+      alert(`Imported ${newPrompts.length} prompt${newPrompts.length!==1?'s':''}, ${newFolders.length} folder${newFolders.length!==1?'s':''}.`);
+    }catch(err){alert('Could not read file. Make sure it\'s a valid Suno Prompts export.');}
+  };
+  reader.readAsText(file);
+});
+
+// ─── INIT ──────────────────────────────────────────────────────────────────
+load();renderPrompts();renderDrawer();
+document.body.classList.toggle('folders-open', window.innerWidth>=768);
+window.addEventListener('resize',()=>{
+  document.body.classList.toggle('folders-open', currentView==='prompts' && window.innerWidth>=768);
+});
+</script>
+</body>
+</html>
