@@ -1,3 +1,4 @@
+import Fuse from 'fuse.js'
 import type { Prompt, SearchResult } from '../types'
 
 export function tokenize(q: string): string[] {
@@ -8,50 +9,17 @@ export function tokenize(q: string): string[] {
     .filter((t) => t.length > 0)
 }
 
-function fuzzyScore(hay: string, needle: string): number {
-  if (hay.includes(needle)) return 3
-  let hi = 0
-  for (const c of needle) {
-    hi = hay.indexOf(c, hi)
-    if (hi === -1) return 0
-    hi++
-  }
-  return 1
-}
-
-function scorePrompt(
-  p: Prompt,
-  tokens: string[],
-  allPrompts: Prompt[]
-): { score: number; hitTokens: Set<string> } {
-  const sourceNames = (p.sourceIds || [])
-    .map((id) => allPrompts.find((x) => x.id === id))
-    .filter(Boolean)
-    .map((x) => (x!.name || '').toLowerCase())
-    .join(' ')
-
-  const fields = [
-    { text: (p.name || '').toLowerCase(), weight: 3 },
-    { text: (p.style || '').toLowerCase(), weight: 2 },
-    { text: (p.lyrics || '').toLowerCase(), weight: 1 },
-    { text: (p.notes || '').toLowerCase(), weight: 1 },
-    { text: sourceNames, weight: 2 },
-  ]
-
-  let total = 0
-  const hits = new Set<string>()
-  tokens.forEach((tok) => {
-    let ts = 0
-    fields.forEach((f) => {
-      const s = fuzzyScore(f.text, tok)
-      if (s > 0) {
-        ts += s * f.weight
-        hits.add(tok)
-      }
-    })
-    total += ts
-  })
-  return { score: total, hitTokens: hits }
+const fuseOptions: Fuse.IFuseOptions<Prompt> = {
+  keys: [
+    { name: 'name', weight: 3 },
+    { name: 'style', weight: 2 },
+    { name: 'lyrics', weight: 1 },
+    { name: 'notes', weight: 1 },
+  ],
+  threshold: 0.4,
+  includeScore: true,
+  includeMatches: true,
+  minMatchCharLength: 2,
 }
 
 export function getFilteredPrompts(
@@ -69,24 +37,49 @@ export function getFilteredPrompts(
     return [...list.filter((p) => p.pinned), ...list.filter((p) => !p.pinned)]
   }
 
-  const scored = list.map((p) => {
-    const { score, hitTokens } = scorePrompt(p, tokens, prompts)
-    return { p, score, hitTokens }
+  const fuse = new Fuse(list, fuseOptions)
+
+  // Search each token independently to support OR/AND logic
+  const tokenResults = tokens.map((tok) => {
+    const results = fuse.search(tok)
+    const idSet = new Set(results.map((r) => r.item.id))
+    const scoreMap = new Map(
+      results.map((r) => [r.item.id, 1 - (r.score ?? 1)])
+    )
+    return { tok, idSet, scoreMap }
   })
 
-  const filtered = scored.filter(({ score, hitTokens }) => {
-    if (!score) return false
-    return mode === 'and' ? tokens.every((t) => hitTokens.has(t)) : true
-  })
+  // Build per-prompt aggregation
+  const promptMap = new Map<string, { prompt: Prompt; score: number; hits: Set<string> }>()
 
-  filtered.sort(
+  for (const { tok, idSet, scoreMap } of tokenResults) {
+    for (const id of idSet) {
+      if (!promptMap.has(id)) {
+        const prompt = list.find((p) => p.id === id)!
+        promptMap.set(id, { prompt, score: 0, hits: new Set() })
+      }
+      const entry = promptMap.get(id)!
+      entry.score += scoreMap.get(id) ?? 0
+      entry.hits.add(tok)
+    }
+  }
+
+  // Filter by mode
+  let results = [...promptMap.values()]
+  if (mode === 'and') {
+    results = results.filter((r) => tokens.every((t) => r.hits.has(t)))
+  }
+
+  // Sort by score descending, then pinned
+  results.sort(
     (a, b) =>
-      b.score - a.score || (b.p.pinned ? 1 : 0) - (a.p.pinned ? 1 : 0)
+      b.score - a.score ||
+      (b.prompt.pinned ? 1 : 0) - (a.prompt.pinned ? 1 : 0)
   )
 
-  return filtered.map((x) => ({
-    ...x.p,
-    _score: x.score,
-    _hits: x.hitTokens,
+  return results.map((r) => ({
+    ...r.prompt,
+    _score: r.score,
+    _hits: r.hits,
   }))
 }
