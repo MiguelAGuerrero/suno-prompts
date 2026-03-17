@@ -1,4 +1,4 @@
-import Fuse from 'fuse.js'
+import Fuse, { type IFuseOptions } from 'fuse.js'
 import type { Prompt, SearchResult } from '../types'
 
 export function tokenize(q: string): string[] {
@@ -9,7 +9,7 @@ export function tokenize(q: string): string[] {
     .filter((t) => t.length > 0)
 }
 
-const fuseOptions: Fuse.IFuseOptions<Prompt> = {
+const fuseOptions: IFuseOptions<Prompt> = {
   keys: [
     { name: 'name', weight: 3 },
     { name: 'style', weight: 2 },
